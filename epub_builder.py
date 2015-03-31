@@ -17,8 +17,7 @@ import os,re
 from zipfile import ZipFile
 
 class OpfFile:
-    def __init__(self, filename, title, author):
-        self.filename = filename
+    def __init__(self, title, author):
         self.outputString = u'''<?xml version="1.0"?>
 <package version="2.0" xmlns="http://www.idpf.org/2007/opf">
 
@@ -36,23 +35,22 @@ class OpfFile:
         for chapter in self.chapters:
             self.outputString += u'''   <item id="%s" href="%s" media-type="application/xhtml+xml" />
 ''' % (chapter['id'], chapter['fileName'])
-        self.outputString += u'''<item id="ncx" href="%s.ncx" media-type="application/x-dtbncx+xml"/>
+        self.outputString += u'''<item id="ncx" href="ncxfile.ncx" media-type="application/x-dtbncx+xml"/>
   </manifest>
 
-  <spine toc="ncx">''' % (self.filename, )
+  <spine toc="ncx">'''
         for chapter in self.chapters:
             self.outputString += u'   <itemref idref="%s" />' % (chapter['id'], )
         self.outputString += u'''   </spine>
 </package>'''
 
-        zipFile.writestr('OEBPS/%s.opf' % (self.filename, ), self.outputString)
+        zipFile.writestr('OEBPS/opffile.opf', self.outputString)
 
     def addChapter(self, chapter):
         self.chapters.append(chapter)
 
 class NcxFile:
-    def __init__(self, filename, title, author):
-        self.filename = filename
+    def __init__(self, title, author):
         self.outputString = u'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN"
 "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
@@ -92,26 +90,26 @@ including those conforming to the relaxed constraints of OPS 2.0 -->
 
         self.outputString += u'''   </navMap>
 </ncx>'''
-        zipFile.writestr("OEBPS/%s.ncx" % (self.filename, ), self.outputString)
+        zipFile.writestr("OEBPS/ncxfile.ncx", self.outputString)
 
     def addChapter(self, chapter):
         self.chapters.append(chapter)
 
 class ContainerFile:
-    def __init__(self, filename, opfFile):
+    def __init__(self):
         self.outputString = u'''<?xml version="1.0" encoding="UTF-8" ?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
   <rootfiles>
     <rootfile full-path="%s" media-type="application/oebps-package+xml"/>
   </rootfiles>
-</container>''' % ('OEBPS/%s.opf' % (filename, ))
+</container>''' % ('OEBPS/opffile.opf')
 
     def finish(self, zipFile):
         zipFile.writestr('OEBPS/META-INF/container.xml', self.outputString)
 
 class EpubBuilder:
-    def __init__(self, filename, title, authorName, chapters):
-        self.filename = filename
+    def __init__(self, outputfile, title, authorName, chapters):
+        self.outputfile = outputfile
         self.title = title
         self.authorName = authorName
         self.chapters = chapters
@@ -120,10 +118,10 @@ class EpubBuilder:
         zipFile.writestr('mimetype', 'application/epub+zip')
 
     def writeBookFile(self):
-        opf = OpfFile(self.filename, self.title, self.authorName)
-        containerFile = ContainerFile(self.filename, opf)
-        ncx = NcxFile(self.filename, self.title, self.authorName)
-        epub = ZipFile('%s.epub' % (self.filename, ), 'w')
+        opf = OpfFile(self.title, self.authorName)
+        containerFile = ContainerFile()
+        ncx = NcxFile(self.title, self.authorName)
+        epub = ZipFile(self.outputfile, 'w')
         i = 0
         for chapter in self.chapters:
             chapterText = u'''<?xml version="1.0" encoding="UTF-8" ?>
